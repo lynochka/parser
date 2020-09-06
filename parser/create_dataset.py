@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
 import inflect
@@ -66,3 +68,30 @@ class NumbersDataset:
                 continue
 
             self.training_data.append((text, number))
+
+        self.encoder: tfds.core.features.text.text_encoder.TokenTextEncoder = (
+            tfds.features.text.TokenTextEncoder(
+                list(training_token_set),
+                oov_buckets=1,
+                oov_token="UNK",
+                lowercase=True,
+                tokenizer=self.tokenizer,
+                strip_vocab=True,
+            )
+        )
+
+    @staticmethod
+    def write_to_file(filename: str, data: List[Tuple[str, int]]):
+        with open(filename, "w") as f:
+            for text, number in data:
+                f.write(f"{text:s}, {number:.1f}\n")
+
+    def dump_data(self, directory_path: str):
+        Path(directory_path).mkdir(parents=True, exist_ok=True)
+
+        for prefix in ["training", "test", "validation"]:
+            attribute_name = f"{prefix}_data"
+            self.write_to_file(
+                os.path.join(directory_path, f"{attribute_name}.csv"),
+                getattr(self, attribute_name),
+            )
