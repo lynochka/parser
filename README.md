@@ -1,6 +1,6 @@
 # Work in progress
 
-Implementation of **Language to Number Translation Tasks** based on NALU [[source]](https://arxiv.org/pdf/1808.00508/).
+Implementation of **Language to Number Translation Tasks** based on NALU [[source](https://arxiv.org/pdf/1808.00508/)].
 
 ## Environment
 
@@ -13,7 +13,7 @@ poetry install
 ```
 
 ## Data preparation
-To reproduce the
+To reproduce the article data
 
 ```python
 from parser.create_dataset import NumbersDataset
