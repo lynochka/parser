@@ -1,4 +1,4 @@
-# Work in progress
+# Language to Number Translation
 
 Implementation of **Language to Number Translation Tasks** based on NALU [[source](https://arxiv.org/pdf/1808.00508/)].
 
