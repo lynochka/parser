@@ -95,3 +95,8 @@ class NumbersDataset:
                 os.path.join(directory_path, f"{attribute_name}.csv"),
                 getattr(self, attribute_name),
             )
+
+
+if __name__ == "__main__":
+    numbers_dataset = NumbersDataset()
+    numbers_dataset.dump_data("data")
