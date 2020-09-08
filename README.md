@@ -12,7 +12,7 @@ poetry config virtualenvs.in-project true
 poetry install
 ```
 
-## Data preparation
+## Create data
 To reproduce the article data
 
 ```python
@@ -22,4 +22,7 @@ numbers_dataset = NumbersDataset()
 numbers_dataset.dump_data("data")
 ```
 
-## TODO: Model
+## Create model (work in progress)
+
+* `numbers_model.py` includes the model class
+* `create_model.py` includes the data preparation and model training (to be completed with e.g., model saving, experiment tracking)
