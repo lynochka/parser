@@ -9,7 +9,7 @@ numbers_dataset = NumbersDataset()
 numbers_dataset.dump_data("data")
 
 # TEXT TO ENCODED SEQUENCES
-# TODO: change how encoder is created and stored while dataset could be added to
+# TODO: c>hange how encoder is created and stored while dataset could be added to
 encoder = numbers_dataset.encoder
 max_sequence_length = 10
 
@@ -55,50 +55,33 @@ validation_dataset = (
     .padded_batch(batch_size=batch_size, padded_shapes=(max_sequence_length, []))
 )
 
-# MODEL TRAINING
-
-loss_object = tf.keras.losses.MeanAbsoluteError()
-optimizer = tf.keras.optimizers.Adam()
-
-train_loss = tf.keras.metrics.Mean(name="train_loss")
-test_loss = tf.keras.metrics.Mean(name="test_loss")
-
 model = NumbersModel(numbers_dataset.encoder.vocab_size, max_sequence_length)
 
-
-@tf.function
-def train_step(encoded_sequences, targets):
-    with tf.GradientTape() as tape:
-        predictions = model(encoded_sequences)
-        loss = loss_object(targets, predictions)
-
-    gradients = tape.gradient(loss, model.trainable_variables)
-    optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-    train_loss(loss)
-
-
-@tf.function
-def test_step(encoded_sequences, targets):
-    predictions = model(encoded_sequences)
-    t_loss = loss_object(targets, predictions)
-    test_loss(t_loss)
-
-
 # NOTE: article implementation stops after 300K gradient descent steps
-EPOCHS = 500
+EPOCHS = int(1e4)
+num_gradient_steps = int(3e5)
+gradient_step = 0
 
 for epoch in range(EPOCHS):
+    if gradient_step > num_gradient_steps:
+        break
     # Reset the metrics at the start of the next epoch
-    train_loss.reset_states()
-    test_loss.reset_states()
+    model.reset_states()
 
     for encoded_sequences, targets in train_dataset:
-        train_step(encoded_sequences, targets)
+        model.train_step(encoded_sequences, targets)
 
     for v_encoded_sequences, v_targets in validation_dataset:
-        test_step(v_encoded_sequences, v_targets)
+        model.test_step(v_encoded_sequences, v_targets)
 
     if not ((epoch + 1) % 10 == 0):
         continue
-    template = "Epoch {}, Loss: {},  Test Loss: {}"
-    print(template.format(epoch + 1, train_loss.result(), test_loss.result()))
+    template = "Epoch {}, Steps {}, Loss: {},  Test Loss: {}"
+    print(
+        template.format(
+            epoch + 1,
+            gradient_step,
+            model.train_loss.result(),
+            model.test_loss.result(),
+        )
+    )

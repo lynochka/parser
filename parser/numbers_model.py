@@ -26,6 +26,16 @@ class NumbersModel(Model):
         self.M_hat = tf.Variable(nalu_initializer(shape=nalu_shape))
         self.G = tf.Variable(nalu_initializer(shape=nalu_shape))
 
+        self.train_loss = tf.keras.metrics.Mean(name="train_loss")
+        self.test_loss = tf.keras.metrics.Mean(name="test_loss")
+
+        self.loss_object = tf.keras.losses.MeanSquaredError()
+        self.optimizer = tf.keras.optimizers.Adam()
+
+    def reset_states(self):
+        self.train_loss.reset_states()
+        self.test_loss.reset_states()
+
     def _nalu(self, x):
         epsilon = 1e-7
 
@@ -41,3 +51,19 @@ class NumbersModel(Model):
         x = self.embedding(x)
         x = self.lstm(x)
         return self._nalu(x)
+
+    @tf.function
+    def train_step(self, encoded_sequences, targets):
+        with tf.GradientTape() as tape:
+            predictions = self(encoded_sequences)
+            loss = self.loss_object(targets, predictions)
+
+        gradients = tape.gradient(loss, self.trainable_variables)
+        self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+        self.train_loss(loss)
+
+    @tf.function
+    def test_step(self, encoded_sequences, targets):
+        predictions = self(encoded_sequences)
+        t_loss = self.loss_object(targets, predictions)
+        self.test_loss(t_loss)
