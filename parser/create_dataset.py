@@ -105,6 +105,7 @@ class NumbersDataset:
             json.dump(
                 {"class": repr(self.tokenizer_class), "kwargs": self.tokenizer_kwargs},
                 f,
+                indent=4,
             )
 
         with open(os.path.join(directory_path, "encoder_metadata.json"), "w") as f:
@@ -115,6 +116,7 @@ class NumbersDataset:
                     "kwargs": self.encoder_kwargs,
                 },
                 f,
+                indent=4,
             )
 
     @classmethod

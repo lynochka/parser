@@ -65,7 +65,7 @@ def main():
     # MODEL: TRAIN
     model = NumbersModel(encoder.vocab_size, max_sequence_length)
 
-    checkpoints_path = os.path.join(".", "checkpoints")
+    checkpoints_path = os.path.join(".", "parser", "checkpoints")
     Path(checkpoints_path).mkdir(parents=True, exist_ok=True)
     best_model_filepath = os.path.join(checkpoints_path, "best_model.hdf5")
     best_model_metadata = os.path.join(checkpoints_path, "best_model.json")
