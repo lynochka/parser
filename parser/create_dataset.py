@@ -117,6 +117,26 @@ class NumbersDataset:
                 f,
             )
 
+    @classmethod
+    def load_tokenizer_and_encoder_from_metadata(
+        cls, tokenizer_metadata_filepath, encoder_metadata_filepath
+    ):
+        """
+        TODO: add typing and documentation
+        """
+        with open(tokenizer_metadata_filepath) as f:
+            tokenizer_metadata = json.load(f)
+        tokenizer = tfds.features.text.Tokenizer(**tokenizer_metadata["kwargs"])
+
+        with open(encoder_metadata_filepath) as f:
+            encoder_metadata = json.load(f)
+        encoder = tfds.features.text.TokenTextEncoder(
+            encoder_metadata["vocab_list"],
+            tokenizer=tokenizer,
+            **encoder_metadata["kwargs"],
+        )
+        return tokenizer, encoder
+
 
 if __name__ == "__main__":
     numbers_dataset = NumbersDataset()

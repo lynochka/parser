@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras.layers import LSTM, Dense, Embedding
 from tensorflow.keras.models import Model
+from tensorflow.python.keras.engine import compile_utils
 
 
 class NumbersModel(Model):
@@ -26,15 +27,21 @@ class NumbersModel(Model):
         self.M_hat = tf.Variable(nalu_initializer(shape=nalu_shape))
         self.G = tf.Variable(nalu_initializer(shape=nalu_shape))
 
+        self.optimizer = tf.keras.optimizers.Adam()
+
         self.train_loss = tf.keras.metrics.Mean(name="train_loss")
         self.test_loss = tf.keras.metrics.Mean(name="test_loss")
-
         self.loss_object = tf.keras.losses.MeanSquaredError()
-        self.optimizer = tf.keras.optimizers.Adam()
+
+        self.train_mae = tf.keras.metrics.Mean(name="train_mae")
+        self.test_mae = tf.keras.metrics.Mean(name="test_mae")
+        self.mae_object = tf.keras.losses.MeanAbsoluteError()
 
     def reset_states(self):
         self.train_loss.reset_states()
         self.test_loss.reset_states()
+        self.train_mae.reset_states()
+        self.test_mae.reset_states()
 
     def _nalu(self, x):
         epsilon = 1e-7
@@ -61,9 +68,11 @@ class NumbersModel(Model):
         gradients = tape.gradient(loss, self.trainable_variables)
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
         self.train_loss(loss)
+        self.train_mae(self.mae_object(targets, predictions))
 
     @tf.function
     def test_step(self, encoded_sequences, targets):
         predictions = self(encoded_sequences)
         t_loss = self.loss_object(targets, predictions)
         self.test_loss(t_loss)
+        self.test_mae(self.mae_object(targets, predictions))
