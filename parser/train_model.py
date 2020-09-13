@@ -45,14 +45,13 @@ def main():
 
     batch_size = 10
     validation_batch_size = 100
-    buffer_size = 100
+    buffer_size = 1000
 
-    # add prefetch for large dataset
     train_dataset = (
         text_train_dataset.map(encode_pyfn, num_parallel_calls=AUTOTUNE)
         .shuffle(buffer_size, seed=0, reshuffle_each_iteration=True)
         .padded_batch(batch_size=batch_size, padded_shapes=(max_sequence_length, []))
-    )
+    ).prefetch(AUTOTUNE)
 
     validation_dataset = (
         text_validation_dataset.map(encode_pyfn, num_parallel_calls=AUTOTUNE)
@@ -60,14 +59,14 @@ def main():
         .padded_batch(
             batch_size=validation_batch_size, padded_shapes=(max_sequence_length, [])
         )
-    )
+    ).prefetch(AUTOTUNE)
 
     # MODEL: TRAIN
     model = NumbersModel(encoder.vocab_size, max_sequence_length)
 
-    checkpoints_path = os.path.join(".", "parser", "checkpoints")
+    checkpoints_path = os.path.join(".", "checkpoints")
     Path(checkpoints_path).mkdir(parents=True, exist_ok=True)
-    best_model_filepath = os.path.join(checkpoints_path, "best_model.hdf5")
+    best_model = os.path.join(checkpoints_path, "best_model.hdf5")
     best_model_metadata = os.path.join(checkpoints_path, "best_model.json")
 
     # NOTE: article implementation stops after 300K gradient descent steps
@@ -94,40 +93,41 @@ def main():
 
         loss = model.train_loss.result()
         test_loss = model.test_loss.result()
-        if test_loss < best_test_loss:
-            patience = 0
-            best_test_loss = test_loss
-            model.save_weights(best_model_filepath, overwrite=True)
-            with open(best_model_metadata, "w") as f:
-                json.dump({"epoch": epoch, "history": history}, f)
-        else:
-            patience += 1
 
         history.append(
             {
                 "loss": float(loss.numpy()),
                 "test_loss": float(test_loss.numpy()),
-                "mae": float(model.train_mae.result().numpy()),
-                "test_mae": float(model.test_mae.result().numpy()),
+                "metric": float(model.train_metric.result().numpy()),
+                "test_metric": float(model.test_metric.result().numpy()),
                 "patience": patience,
             }
         )
 
+        if test_loss < best_test_loss:
+            patience = 0
+            best_test_loss = test_loss
+            model.save_weights(best_model)
+            with open(best_model_metadata, "w") as f:
+                json.dump({"epoch": epoch, "history": history}, f)
+        else:
+            patience += 1
+
         if epoch % 100 == 0:
             template = (
                 "Epoch {}, Steps {}, "
-                + "MAE: {}, Test MAE: {}, "
                 + "Loss: {}, Test Loss: {}, "
+                + "Metric: {}, Test metric: {}, "
                 + "Patience: {}, Best Test Loss: {}"
             )
             print(
                 template.format(
                     epoch,
                     gradient_step,
-                    model.train_mae.result(),
-                    model.test_mae.result(),
                     loss,
                     test_loss,
+                    model.train_metric.result(),
+                    model.test_metric.result(),
                     patience,
                     best_test_loss,
                 )

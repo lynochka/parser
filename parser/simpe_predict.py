@@ -30,10 +30,25 @@ tokenizer, encoder = NumbersDataset.load_tokenizer_and_encoder_from_metadata(
 )
 
 model = NumbersModel(encoder.vocab_size, max_sequence_length)
-# HACK: intialize the model
+# HACK to initialize the model
 simple_predict(model, "one")
 
 model.load_weights(os.path.join("checkpoints", "best_model.hdf5"))
 
-text = "hundred and eighteen"
-print(simple_predict(model, text))
+import csv
+
+with open("data/validation_data.csv", newline="") as csvfile:
+    csv_reader = csv.reader(csvfile, delimiter=",")
+
+    ae = 0
+    count = 0
+    for row in csv_reader:
+        text = row[0]
+        target = float(row[1])
+        prediction = simple_predict(model, text)
+        ae += abs(target - prediction)
+        count += 1
+        print(f"{text}: {int(target)} --> {prediction:.1f}")
+        if count > 10:
+            break
+    print("MAE:", ae / count)

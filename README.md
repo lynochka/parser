@@ -4,25 +4,30 @@ Implementation of **Language to Number Translation Tasks** based on NALU [[sourc
 
 ## Environment
 
-To istall poetry follow https://python-poetry.org/docs/#installation
+To install poetry follow https://python-poetry.org/docs/#installation
 
-To intialize the environment
+To initialize the environment
 ```sh
 poetry config virtualenvs.in-project true
 poetry install
 ```
 
-## Create data
-To reproduce the article data
+## Data
+To reproduce the article data, and recreate data encoder and tokenizer.
 
-```python
-from parser.create_dataset import NumbersDataset
-
-numbers_dataset = NumbersDataset()
-numbers_dataset.dump_data("data")
+```sh
+poetry run python parser/create_dataset.py
 ```
 
-## Create model (work in progress)
+## Model
 
-* `numbers_model.py` includes the model class
-* `create_model.py` includes the data preparation and model training (to be completed with e.g., model saving, experiment tracking)
+`parser/numbers_model.py` includes the model class and the custom NALU layer.
+
+To train the model, while keeping track of the best model.
+```sh
+poetry run python parser/train_model.py
+```
+
+## Prediction (in progress)
+
+`parser/simple_predict.py` includes an example of prediction per single text input.
