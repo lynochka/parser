@@ -4,7 +4,7 @@ from tensorflow.keras.models import Model
 
 
 class NALU(tf.keras.layers.Layer):
-    def __init__(self, units=1, input_dim=10):
+    def __init__(self, units=1):
         super(NALU, self).__init__()
         self.units = units
         self.W_hat = None
