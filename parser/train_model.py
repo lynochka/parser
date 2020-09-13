@@ -1,16 +1,33 @@
-from parser.create_dataset import NumbersDataset
+import json
+import os
 from parser.numbers_model import NumbersModel
 
 import tensorflow as tf
+import tensorflow_datasets as tfds
 from tensorflow.data.experimental import AUTOTUNE
 
-# CREATE & SAVE DATA
-numbers_dataset = NumbersDataset()
-numbers_dataset.dump_data("data")
+# DATA: LOAD TEXT, TARGETS, TOKENIZER, ENCODER
+text_train_dataset = tf.data.experimental.CsvDataset(
+    filenames="data/training_data.csv",
+    record_defaults=[tf.string, tf.float32],
+    header=False,
+)
+text_validation_dataset = tf.data.experimental.CsvDataset(
+    filenames="data/validation_data.csv",
+    record_defaults=[tf.string, tf.float32],
+    header=False,
+)
+with open(os.path.join("data", "tokenizer_metadata.json")) as f:
+    tokenizer_metadata = json.load(f)
+tokenizer = tfds.features.text.Tokenizer(**tokenizer_metadata["kwargs"])
+with open(os.path.join("data", "encoder_metadata.json")) as f:
+    encoder_metadata = json.load(f)
+encoder = tfds.features.text.TokenTextEncoder(
+    encoder_metadata["vocab_list"], tokenizer=tokenizer, **encoder_metadata["kwargs"]
+)
+
 
 # TEXT TO ENCODED SEQUENCES
-# TODO: c>hange how encoder is created and stored while dataset could be added to
-encoder = numbers_dataset.encoder
 max_sequence_length = 10
 
 
@@ -28,17 +45,6 @@ def encode_pyfn(text, target):
     return text_encoded, target
 
 
-text_train_dataset = tf.data.experimental.CsvDataset(
-    filenames="data/training_data.csv",
-    record_defaults=[tf.string, tf.float32],
-    header=False,
-)
-text_validation_dataset = tf.data.experimental.CsvDataset(
-    filenames="data/validation_data.csv",
-    record_defaults=[tf.string, tf.float32],
-    header=False,
-)
-
 batch_size = 10
 buffer_size = 1000
 
@@ -55,7 +61,7 @@ validation_dataset = (
     .padded_batch(batch_size=batch_size, padded_shapes=(max_sequence_length, []))
 )
 
-model = NumbersModel(numbers_dataset.encoder.vocab_size, max_sequence_length)
+model = NumbersModel(encoder.vocab_size, max_sequence_length)
 
 # NOTE: article implementation stops after 300K gradient descent steps
 EPOCHS = int(1e4)
