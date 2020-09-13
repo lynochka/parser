@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
@@ -17,9 +18,9 @@ class NumbersDataset:
 
         self.np_random_seed = np.random.RandomState(seed)
 
-        self.tokenizer: tfds.core.features.text.text_encoder.Tokenizer = (
-            tfds.features.text.Tokenizer()
-        )
+        self.tokenizer_kwargs = {"alphanum_only": True}
+        self.tokenizer_class = tfds.features.text.Tokenizer
+        self.tokenizer = self.tokenizer_class(**self.tokenizer_kwargs)
 
         # NOTE: NALU article uses validation data to choose a better model
         self.training_data = []  # type: List[Tuple[string, float]]
@@ -31,7 +32,7 @@ class NumbersDataset:
 
         # mapping of tokens to ensure all unique tokens are added to training
         missing_training_tokens: Set[str] = set()
-        training_token_set: Set[str] = set()
+        self.training_token_set: Set[str] = set()
 
         for number in range(1, 1000):
             number_text = p.number_to_words(number)
@@ -43,11 +44,11 @@ class NumbersDataset:
             # add all numbers < 20 to training data, remove them from missing
             if number < 20:
                 self.training_data.append((number_to_text[number], number))
-                training_token_set.update(token_set)
+                self.training_token_set.update(token_set)
                 continue
             # add missing training tokens to be sampled into training
             for token in token_set:
-                if token not in training_token_set:
+                if token not in self.training_token_set:
                     missing_training_tokens.add(token)
 
         # following NALU paper take 630 numbers into test, and 200 into validation
@@ -56,9 +57,9 @@ class NumbersDataset:
         for number in missing_numbers:
             text: str = number_to_text[number]
             tokens: Set[str] = number_to_token_set[number]
-            if tokens.difference(training_token_set):
+            if tokens.difference(self.training_token_set):
                 self.training_data.append((text, number))
-                training_token_set.update(tokens)
+                self.training_token_set.update(tokens)
                 continue
             if len(self.test_data) < 630:
                 self.test_data.append((text, number))
@@ -69,15 +70,19 @@ class NumbersDataset:
 
             self.training_data.append((text, number))
 
-        self.encoder: tfds.core.features.text.text_encoder.TokenTextEncoder = (
-            tfds.features.text.TokenTextEncoder(
-                list(training_token_set),
-                oov_buckets=1,
-                oov_token="UNK",
-                lowercase=True,
-                tokenizer=self.tokenizer,
-                strip_vocab=True,
-            )
+        self.encoder_kwargs = {
+            "oov_buckets": 1,
+            "oov_token": "UNK",
+            "strip_vocab": True,
+            "lowercase": True,
+        }
+        self.encoder_vocab_list = sorted(self.training_token_set)
+
+        self.encoder_class = tfds.features.text.TokenTextEncoder
+        self.encoder = self.encoder_class(
+            vocab_list=self.encoder_vocab_list,
+            tokenizer=self.tokenizer,
+            **self.encoder_kwargs,
         )
 
     @staticmethod
@@ -95,6 +100,44 @@ class NumbersDataset:
                 os.path.join(directory_path, f"{attribute_name}.csv"),
                 getattr(self, attribute_name),
             )
+
+        with open(os.path.join(directory_path, "tokenizer_metadata.json"), "w") as f:
+            json.dump(
+                {"class": repr(self.tokenizer_class), "kwargs": self.tokenizer_kwargs},
+                f,
+                indent=4,
+            )
+
+        with open(os.path.join(directory_path, "encoder_metadata.json"), "w") as f:
+            json.dump(
+                {
+                    "class": repr(self.encoder_class),
+                    "vocab_list": sorted(self.training_token_set),
+                    "kwargs": self.encoder_kwargs,
+                },
+                f,
+                indent=4,
+            )
+
+    @classmethod
+    def load_tokenizer_and_encoder_from_metadata(
+        cls, tokenizer_metadata_filepath, encoder_metadata_filepath
+    ):
+        """
+        TODO: add typing and documentation
+        """
+        with open(tokenizer_metadata_filepath) as f:
+            tokenizer_metadata = json.load(f)
+        tokenizer = tfds.features.text.Tokenizer(**tokenizer_metadata["kwargs"])
+
+        with open(encoder_metadata_filepath) as f:
+            encoder_metadata = json.load(f)
+        encoder = tfds.features.text.TokenTextEncoder(
+            encoder_metadata["vocab_list"],
+            tokenizer=tokenizer,
+            **encoder_metadata["kwargs"],
+        )
+        return tokenizer, encoder
 
 
 if __name__ == "__main__":
